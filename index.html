@@ -52,6 +52,17 @@
   .del { padding: 4px 9px; font-size: .8rem; color: var(--danger); }
   .del.armed { background: var(--danger); color: var(--surface); border-color: var(--danger); }
 
+  .field { display: grid; gap: 4px; }
+  .field > label { display: block; }
+  .combo { position: relative; }
+  .combo input { padding-right: 40px; }
+  .combo-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; padding: 0; border: 0; background: none; color: var(--muted); display: grid; place-items: center; }
+  .combo-btn:hover { color: var(--fg); }
+  .combo ul { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; margin: 0; padding: 4px; list-style: none; min-width: 180px; max-width: 100%;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+  .combo li { padding: 8px 12px; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
+  .combo li:hover, .combo li.active { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+
   details summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
   .cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
   .cat { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 99px; padding: 2px 4px 2px 10px; font-size: .9rem; }
@@ -88,10 +99,17 @@
     <section class="card">
       <form id="addForm" novalidate>
         <p class="muted" id="formHint" style="margin:0"></p>
-        <label>Libellé
-          <input type="text" id="label" list="libelles" maxlength="100" autocomplete="off" placeholder="Choisir dans la liste ou écrire">
-          <datalist id="libelles"></datalist>
-        </label>
+        <div class="field">
+          <label for="label">Libellé</label>
+          <div class="combo">
+            <input type="text" id="label" maxlength="100" autocomplete="off" placeholder="Choisir dans la liste ou écrire"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="libelles">
+            <button type="button" class="combo-btn" id="comboBtn" tabindex="-1" aria-label="Afficher la liste des libellés">
+              <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <ul id="libelles" role="listbox" hidden></ul>
+          </div>
+        </div>
         <div class="two">
           <label>Montant (€)
             <input type="text" id="amount" inputmode="decimal" placeholder="0,00">
@@ -329,11 +347,57 @@ $("#addForm").addEventListener("submit", async (e) => {
   }
 });
 
-// ----- Liste des libellés habituels -----
+// ----- Menu des libellés habituels (liste complète, sans défilement) -----
+const labelInput = $("#label");
+const menu = $("#libelles");
+let actif = -1;
+
+function openMenu(filtre) {
+  const q = (filtre || "").trim().toLowerCase();
+  const items = q ? categories.filter((c) => c.toLowerCase().includes(q)) : categories;
+  menu.textContent = "";
+  actif = -1;
+  if (!items.length) return closeMenu();
+  for (const c of items) {
+    const li = el("li", null, c);
+    li.setAttribute("role", "option");
+    li.addEventListener("mousedown", (e) => { e.preventDefault(); choose(c); });
+    menu.append(li);
+  }
+  menu.hidden = false;
+  labelInput.setAttribute("aria-expanded", "true");
+}
+function closeMenu() {
+  menu.hidden = true;
+  actif = -1;
+  labelInput.setAttribute("aria-expanded", "false");
+}
+function choose(c) {
+  labelInput.value = c;
+  closeMenu();
+  $("#amount").focus();
+}
+function highlight(i) {
+  const lis = [...menu.children];
+  if (!lis.length) return;
+  actif = (i + lis.length) % lis.length;
+  lis.forEach((li, k) => li.classList.toggle("active", k === actif));
+}
+
+$("#comboBtn").addEventListener("mousedown", (e) => e.preventDefault());
+$("#comboBtn").addEventListener("click", () => {
+  if (menu.hidden) { openMenu(""); labelInput.focus(); } else closeMenu();
+});
+labelInput.addEventListener("input", () => (labelInput.value.trim() ? openMenu(labelInput.value) : closeMenu()));
+labelInput.addEventListener("blur", closeMenu);
+labelInput.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") { e.preventDefault(); if (menu.hidden) openMenu(""); highlight(actif + 1); }
+  else if (e.key === "ArrowUp" && !menu.hidden) { e.preventDefault(); highlight(actif - 1); }
+  else if (e.key === "Enter" && !menu.hidden && actif >= 0) { e.preventDefault(); choose(menu.children[actif].textContent); }
+  else if (e.key === "Escape" && !menu.hidden) { e.preventDefault(); closeMenu(); }
+});
+
 function renderCats() {
-  const dl = $("#libelles");
-  dl.textContent = "";
-  for (const c of categories) dl.append(new Option(c));
 
   const box = $("#cats");
   box.textContent = "";
