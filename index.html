@@ -89,7 +89,8 @@
       <form id="addForm" novalidate>
         <p class="muted" id="formHint" style="margin:0"></p>
         <label>Libellé
-          <input type="text" id="label" maxlength="100" placeholder="Loyer octobre, plein d'essence…">
+          <input type="text" id="label" list="libelles" maxlength="100" autocomplete="off" placeholder="Choisir dans la liste ou écrire">
+          <datalist id="libelles"></datalist>
         </label>
         <div class="two">
           <label>Montant (€)
@@ -99,9 +100,6 @@
             <input type="date" id="date">
           </label>
         </div>
-        <label>Catégorie
-          <select id="cat"></select>
-        </label>
         <p id="error" class="error" hidden></p>
         <button class="primary" type="submit" id="addBtn">Ajouter</button>
       </form>
@@ -110,10 +108,10 @@
     <div id="list" style="display:grid; gap:18px"></div>
 
     <details class="card">
-      <summary>Gérer les catégories</summary>
+      <summary>Gérer la liste des libellés</summary>
       <div class="cats" id="cats"></div>
       <form class="add-cat" id="catForm">
-        <input type="text" id="newCat" maxlength="30" placeholder="Nouvelle catégorie" aria-label="Nouvelle catégorie">
+        <input type="text" id="newCat" maxlength="100" placeholder="Nouveau libellé" aria-label="Nouveau libellé">
         <button type="submit">Ajouter</button>
       </form>
     </details>
@@ -145,10 +143,6 @@ const fmt = (cents) => eur.format(cents / 100);
 const other = (p) => (p === "a" ? "b" : "a");
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const toDate = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-const store = {
-  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
-};
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -278,7 +272,6 @@ function row(l) {
   const meta = el("div", "muted");
   const d = toDate(l.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
   meta.append(`${d} · payé par `, who(l.payer));
-  if (l.cat) meta.append(` · ${l.cat}`);
   info.append(meta);
   r.append(info, el("span", "num", fmt(l.amount)));
 
@@ -319,15 +312,13 @@ $("#addForm").addEventListener("submit", async (e) => {
   const label = $("#label").value.trim();
   const amount = parseAmount($("#amount").value);
   const date = $("#date").value;
-  const cat = $("#cat").value;
   if (!label) return showError("Indiquez un libellé.");
   if (!amount) return showError("Le montant doit être un nombre positif, par exemple 12,50.");
   if (!date) return showError("Choisissez une date.");
   showError("");
   $("#addBtn").disabled = true;
   try {
-    await addDoc(lignesRef, { label, amount, date, cat, payer: moi, createdAt: Date.now() });
-    store.set("cat", cat);
+    await addDoc(lignesRef, { label, amount, date, payer: moi, createdAt: Date.now() });
     $("#label").value = "";
     $("#amount").value = "";
     $("#label").focus();
@@ -338,14 +329,11 @@ $("#addForm").addEventListener("submit", async (e) => {
   }
 });
 
-// ----- Catégories -----
+// ----- Liste des libellés habituels -----
 function renderCats() {
-  const sel = $("#cat");
-  const current = sel.value || store.get("cat");
-  sel.textContent = "";
-  sel.append(new Option("Sans catégorie", ""));
-  for (const c of categories) sel.append(new Option(c, c));
-  sel.value = categories.includes(current) ? current : "";
+  const dl = $("#libelles");
+  dl.textContent = "";
+  for (const c of categories) dl.append(new Option(c));
 
   const box = $("#cats");
   box.textContent = "";
@@ -353,7 +341,7 @@ function renderCats() {
     const chip = el("span", "cat", c);
     const x = el("button", null, "×");
     x.type = "button";
-    x.setAttribute("aria-label", `Supprimer la catégorie ${c}`);
+    x.setAttribute("aria-label", `Retirer ${c} de la liste`);
     x.addEventListener("click", () => saveCats(categories.filter((k) => k !== c)));
     chip.append(x);
     box.append(chip);
@@ -362,7 +350,7 @@ function renderCats() {
 
 async function saveCats(list) {
   try { await setDoc(catsRef, { list }); }
-  catch { alert("La modification des catégories n'a pas abouti."); }
+  catch { alert("La modification de la liste n'a pas abouti."); }
 }
 
 $("#catForm").addEventListener("submit", (e) => {
