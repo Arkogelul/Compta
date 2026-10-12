@@ -1,13 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Remplacer CODE-SECRET par votre code (lettres, chiffres, tirets). Il n'est jamais dans le dépôt GitHub.
-    match /comptes/{code}/lignes/{ligne} {
-      allow read, delete: if code == "CODE-SECRET";
-      allow create: if code == "CODE-SECRET"
+    function estArko() {
+      return request.auth != null && request.auth.token.email == "arko@compta-b71bc.firebaseapp.com";
+    }
+    function estDoodads() {
+      return request.auth != null && request.auth.token.email == "doodads@compta-b71bc.firebaseapp.com";
+    }
+    function membre() {
+      return estArko() || estDoodads();
+    }
+    // Vrai si la personne connectée est bien celle désignée par p ("a" = Arko, "b" = Doodads).
+    function cestMoi(p) {
+      return (p == "a" && estArko()) || (p == "b" && estDoodads());
+    }
+
+    match /lignes/{ligne} {
+      allow read: if membre();
+      allow create: if cestMoi(request.resource.data.payer)
         && request.resource.data.amount is int && request.resource.data.amount > 0
-        && request.resource.data.payer in ["a", "b"]
         && request.resource.data.label is string && request.resource.data.label.size() <= 100;
+      allow delete: if cestMoi(resource.data.payer);
+    }
+
+    match /config/categories {
+      allow read: if membre();
+      allow write: if membre() && request.resource.data.list is list && request.resource.data.list.size() <= 50;
     }
   }
 }
