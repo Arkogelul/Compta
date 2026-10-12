@@ -45,7 +45,7 @@
   button { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
   button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
   button:disabled { opacity: .55; cursor: default; }
-  #error { color: var(--danger); margin: 0; font-size: .9rem; }
+  #error, #lockError { color: var(--danger); margin: 0; font-size: .9rem; }
 
   .month { display: grid; gap: 4px; }
   .month-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 4px; }
@@ -113,9 +113,14 @@
 
 <script type="module">
 // ===== À personnaliser =====
-const NOMS = { a: "Personne A", b: "Personne B" };
+const NOMS = { a: "Arko", b: "Doodads" };
 const firebaseConfig = {
-  // Coller ici l'objet donné par la console Firebase (Paramètres du projet > Vos applications > Web)
+  apiKey: "AIzaSyCYBCkeT_ePmWBTX5aA7QTyfDJ3kde8vvs",
+  authDomain: "compta-b71bc.firebaseapp.com",
+  projectId: "compta-b71bc",
+  storageBucket: "compta-b71bc.firebasestorage.app",
+  messagingSenderId: "1064850035080",
+  appId: "1:1064850035080:web:20899cfe8f5a6b9b2aea3d"
 };
 const CATEGORIES = ["Loyer", "Électricité, gaz, eau", "Abonnements", "Courses", "Maison", "Sorties", "Transport", "Autre"];
 // ===========================
