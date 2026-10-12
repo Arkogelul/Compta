@@ -168,6 +168,7 @@ let moi = null;          // "a" ou "b"
 let lignes = [];
 let categories = CATEGORIES_DEPART;
 let stops = [];
+let lockMsg = "";        // message à afficher au prochain écran de connexion
 
 // ----- Connexion -----
 function showLock(msg) {
@@ -210,7 +211,7 @@ onAuthStateChanged(auth, (user) => {
   stops.forEach((s) => s());
   stops = [];
   moi = user ? (Object.keys(EMAILS).find((p) => EMAILS[p] === user.email) || null) : null;
-  if (!moi) { if (user) signOut(auth); showLock(); return; }
+  if (!moi) { if (user) signOut(auth); showLock(lockMsg); lockMsg = ""; return; }
   $("#lock").hidden = true;
   $("#app").hidden = false;
   $("#session").hidden = false;
@@ -221,7 +222,7 @@ onAuthStateChanged(auth, (user) => {
       .filter((l) => Number.isFinite(l.amount) && (l.payer === "a" || l.payer === "b"))
       .sort((x, y) => (y.date || "").localeCompare(x.date || "") || (y.createdAt || 0) - (x.createdAt || 0));
     render();
-  }, () => showLock("Accès refusé. Les règles Firestore ne sont pas à jour.")));
+  }, () => { lockMsg = "Accès refusé. Les règles Firestore ne sont pas à jour."; signOut(auth); }));
   stops.push(onSnapshot(catsRef, (snap) => {
     const list = snap.exists() ? snap.data().list : null;
     categories = Array.isArray(list) ? list.filter((c) => typeof c === "string") : CATEGORIES_DEPART;
