@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Remplacer CODE-SECRET par votre code (lettres, chiffres, tirets). Il n'est jamais dans le dépôt GitHub.
+    match /comptes/{code}/lignes/{ligne} {
+      allow read, delete: if code == "CODE-SECRET";
+      allow create: if code == "CODE-SECRET"
+        && request.resource.data.amount is int && request.resource.data.amount > 0
+        && request.resource.data.payer in ["a", "b"]
+        && request.resource.data.label is string && request.resource.data.label.size() <= 100;
+    }
+  }
+}
